@@ -31,7 +31,7 @@ public static List<Apple> filterGreenApples(List<Apple inventory) {
 - 만약 새로운 요구사항이 추가 된다면? 
   - ex) 기존에는 녹색 사과를 필터링하는데 빨간 사과도 필터링 하고싶음.
 
-```거의 비슷한 코드가 반복 존재한다면 그 코드를 추상화한다.
+```java
 public static List<Apple> filterRedApples(List<Apple inventory) {
   List<Apple> result = new ArrayList<>(); // 사과 누적 리스트
   for(Apple apple : inventory) {
