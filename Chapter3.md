@@ -6,7 +6,7 @@
 
 람다표현식은 익명클래스처럼 이름이 없는 함수이면서, 메서드를 인수로 전달할 수 있다.
 
-람다표현식은 메서도로 전달할 수 있는 익명함수를 단순화한 것이다.
+람다표현식은 메서드로 전달할 수 있는 익명함수를 단순화한 것이다.
 
 람다표현식에는 이름은 없지만, `파라미터 리스트, 바디, 반환형식, 발생할 수 있는 예외리스트`를 가질 수 있다.
 
@@ -268,38 +268,6 @@ process(() -> { System.out.println("This is awesome"); });
 
 
 
->   **Quiz**
->
->   올바른 람다표현식 사용법은?
->
->   ```java
->   // 1.
->   excute(() -> {});
->   public void execute(Runnable r) {
->       r.run();
->   }
->   
->   // 2.
->   public Callable<String> fetch() {
->       return () -> "Tricky example ;-)";
->   }
->   
->   // 3.
->   Predicate<Apple> p = (Apple a) -> a.getWeight();
->   ```
->
->   
->
->   1번에서 람다표현식 `() -> {}`의 시그니처는 `() -> void` 이며 Runnable의 추상 메서드 run의 시그니처와 일치하므로 유효한 람다 표현식이다.
->   람다의 바디가 비어 있으므로 이 코드를 실행하면 아무 일도 일어나지 않는다.
->
->   2번에서 fetch 메서드의 반환 형식은 Callable<String> 인데 T를 String으로 대치했을 때 Callable<String>  메서드의 시그니처는 `() -> String`이 된다.
->   `() -> "Tricky example ;-)"`는 `() -> String` 시그니처이므로 문맥상 유효하다.
->
->   3번에서 람다 표현식 `(Apple a) -> a.getWeight()`의 시그니처는 `(Apple) -> Integer` 이므로 `Predicate<Apple>: (Apple) -> boolean` 의 test메서드의 시그니처와 일치하지 않는다. 따라서 유효하지 않ㄴ다.
-
-
-
 ***@FunctionalInterface***
 
 새로운 자바 API를 살펴보면 함수형 인터페이스에 `@FunctioinalInterface` 어노테이션이 추가되어 있다.
@@ -495,31 +463,6 @@ List<Integer> l = map(
 
 
 
->   **Quiz**
->
->   다음과 같은 함수형 디스크립터가 있을 때 어떤 함수형 인터페이스를 사용할 수 있는가? 또, 이 인터페이스에 사용할 수 있는 유효한 람다 표현식을 제시하시오.
->
->   1.   `T -> R`
->   2.   `(Int, int) -> int`
->   3.   `T -> void`
->   4.   `() -> T`
->   5.   `(T, U) -> R`
->
->   d
->
->   1번은 Function<T, R>이 대표적이다 T형식의 객체를 R형식의 객체로 변환할 때 사용한다.
->
->   2번은 IntBinaryOperator의 `(int, int) -> int` 형식의 시그니처를 갖는 추상 메서드 applyAsInt를 정의한다.
->
->   3번은 Consumer<T> 는 `T -> void` 형식의 시그니처를 갖는 추상메서드 accept을 정의한다.
->
->   4번은 Supplier<T>는 `() -> T` 형식의 시그니처를 갖는 추상메서드 get을 정의한다.
->    또, Callable<T>도 `() -> T` 형식의 시그니처를 갖는 추상메서드 call을 정의한다.
->
->   5번은 BiFunction<T, U, R>은 `(T, U) -> R` 형식의 시그니처를 갖는 추상메서드 apply를 정의한다.
-
-
-
 ***`예외, 람다, 함수형 인터페이스의 관계`***
 
 함수형 인터페이스는 확인된 예외를 던지는 동작을 허용하지 않는다.
@@ -543,3 +486,356 @@ Function<BufferedReader, String> f = (BufferedReader b) -> {
 
 # 5. 형식검사, 형식추론, 제약
 
+## 형식검사
+
+람다가 사용되는 콘텍스트를 이용해 람다의 형식을 추론할 수 있다.
+
+```java
+List<Apple> heavierThan150g =
+    filter(inventory, (Apple, apple) -> apple.getWeight() > 150);
+```
+
+다음과 같은 순서로 형식 확인 과정이 진행된다.
+
+1.   filter 메서드의 선언을 확인한다.
+2.   filter 메서드는 두 번째 파라미터로 `Prdicate<Apple>` 형식(대상 형식)을 기대한다.
+3.   `Predicate<Apple>`은 test라는 한 개의 추상 메서드를 정의하는 함수형 인터페이스이다.
+4.   test메서드는 Apple을 받아 boolean을 반환하는 함수 디스크립터를 묘사한다.
+5.   filter메서드로 전달된 인수는 이와 같은 요구사항을 만족해야 한다.
+
+
+
+## 다른 함수형 인터페이스
+
+>   ***다이아몬드 연산자***
+>
+>   다이아몬드 연산자(`<>`)로 콘텍스트에 따른 제네릭 형식을 추론할 수 있다.
+>
+>   주어진 클래스 인스턴스 표현식을 두 개 이상의 다양한 콘텍스트에 사용할 수 있고 이 때 인스턴스 표현식의 형식 인수는 콘텍스트에 의해 추론된다.
+>
+>   `List<String> listOfStrings = new ArrayList<>();`
+>   `List<Integer> listOfIntegers = new ArrayList<>();`
+
+>   ***특별한 void 호환 규칙***
+>
+>   람다의 바디에 일반 표현식이 있으면 `void`를 반환하는 함수 디스크립터와 호환된다.
+>
+>   예를 들어 다음 두 행의 예제에서 List의 add메서드는 `Consumer` 콘텍스트(`T -> void`)가 기대하는 void 대신 boolean을 반환하지만 유효한 코드이다.
+>
+>   `Predicate<String> p = s -> list.add(s);` // *Predicate는 boolean을 반환*
+>   `Consumer<String> b = s -> list.add(s);` // *Consumersms void를 반환*
+
+
+
+## 형식추론
+
+자바 컴파일러는 람다 표현식이 사용된 콘텍스트를 이용해서 람다 표현식과 관련된 함수형 인터페이스를 추론한다.
+
+즉, 대상 형식을 이용해서 함수 디스크립터를 알 수 있으므로 컴파일러는 람다의 시그니처도 추론할 수 있다.
+
+결과적으로 컴파일러는 람다 표현식의 파라미터 형식에 접근할 수 있으므로 람다 문법에서 이를 생략할 수 있다.
+
+```java
+// 컴파일러는 람다 파라미터 형식을 추론할 수 있다.
+List<Apple> greenApples = 
+    filter(inventory, apple -> GREEN.equals(apple.getColor()));
+
+// 여러 파라미터를 포함하는 람다포현식에서는 코드 가독성 향상이 더욱 두드러진다.
+Comparator<Apple> c = 
+    (Apple a1, Apple a2) -> a1.getWeight().compareTo(a2.getWeight());
+Comparator<Apple> c = 
+    (a1, a2) -> a1.getWeight().compareTo(a2.getWeight());
+```
+
+
+
+## 지역변수 사용
+
+지금 까지의 람다 표현식은 인수를 자신의 바디안에서만 사용했다. 하지만 람다 표현식에서는 익명함수가 하는 것처럼 **자유 변수(파라미터로 넘겨진 변수가 아닌 외부에서 정의된 변수)**를 활용할 수 있다. 이와 같은 동작을 **람다 캡처링**(capturing lambda)라고 부른다.
+
+```java
+int portNumber = 1337;
+Runnable r = () -> System.out.println(portNumber);
+```
+
+하지만, 자유 변수에도 약간의 제약이 있다.
+
+**인스턴스 변수와 정적변수를 자유롭게 캡쳐(자신의 바디에서 참조할 수 있도록) 할 수 있다.**
+
+하지만 그러려면 **지역 변수는 명시적으로 final로 선언되어 있어야 하거나 실질적으로 final로 선언된 변수와 똑같이 사용되어야 한다.**
+
+
+
+즉, 람다 표현식은 한 번만 할당할 수 있는 지역 변수를 캡처할 수 있다.
+
+```java
+// portNumber라는 변수에 값을 두 번 할당하므로 컴파일할 수 없는 코드이다.
+int portNumber = 1337;
+Runnable r = () -> System.out.println(portNumber);
+portNumber = 31337; 
+```
+
+
+
+>   ***지역 변수의 제약***
+>
+>   내부적으로 인스턴스변수와 지역변수는 태생부터 다르다.
+>
+>   **인스턴스 변수는 힙에 저장**되는 반명 **지역변수는 스택에 위치**한다.
+>
+>   람다에서 지역 변수에 바로 접근할 수 있다는 가정하에 람다가 스레드에서 실행된다면 변수를 할당한 스레드가 사라져서 변수할당이 해제되었는데도 람다를 실행하는 스레드에서는 해당변수에 접근하려 할 수 있다.
+>
+>   따라서 자바 구현에서는 원래 변수에 접근을 허용하는 것이 아니라 자유 지역 변수의 **복사본을 제공**한다.
+>
+>   따라서 이 복사본의 값이 바뀌지 않아야 하므로 지역변수에는 한 번만 값을 할당해야 한다는 제약이 생긴 것이다.
+
+
+
+# 6. 메서드 참조
+
+메서드 참조를 이용하면 기존의 메서드 정의를 재활용해서 람다처럼 전달할 수 있다.
+
+때로는 람다 표현식보다 메서드 참조를 사용하는 것이 더 가독성이 좋으며 자연스러울 수 있다.
+
+```java
+// 람다 표현식
+inventory.sort((Apple a1, Apple a2) ->
+              	a1.getWeight().compareTo(a2.getWeight()));
+// 메서드 참조
+inventory.sort(comparing(Apple::getWeight));
+```
+
+특정 메서드만은 호출하기 위해서는 메서드를 어떻게 호출하는지 설명을 참조하기보다는 **메서드명을 직접 참조**하는 것이 편리하다.
+
+메서드 참조는 메서드명 앞에 구분자(`::`)를 붙이는 방식으로 메서드 참조를 활용할 수 있다.
+
+결과적으로 메서드 참조는 람다표현식 `(Apple a) -> a.getWeight()`를 축약한 것이다.
+
+
+
+```java
+// 헬퍼 메서드 정의
+private boolean isValidName(String string) {
+    return Character.isUpperCase(string.charAt(0));
+}
+
+// Predicate<String>을 필요로 하는 적당한 상황에서 메서드 참조 사용 가능
+filter(words, this::isValidName);
+```
+
+
+
+## 생성자 참조
+
+`ClasName::new` 처럼 클래스명과 `new` 키워드를 이용해 기존 생성자의 참조를 만들 수 있다.
+
+```java
+// 인수가 없는 생성자
+Supplier<Apple> c1 = Apple::new;
+Apple a1 = c1.get(); // Supplier의 get메서드를 호출해서 새로운 Apple객체를 만들 수 있다.
+
+//* 위 코드는 다음과 같다. *//
+
+Supplier<Apple> c1 = () -> new Apple();
+Apple a1 = c1.get();
+```
+
+Apple(Integer weight)라는 시그니처를 갖는 생성자는 Function 인터페이스의 시그니처와 같다.
+
+```java
+Function<Integer, Apple> c2 = Apple::new; // Apple(Integer weight)의 생성자 참조
+Apple a2 = c2.apply(110); // Function의 apply 메서드에 무게를 인수로 호출해서 새로운 Apple객체를 만들 수 있다.
+
+//* 위 코드는 다음과 같다. *//
+
+Function<Integer. Apple> c2 = (weight) -> new Apple(weight);
+Apple a2 = c2.apply(110);
+```
+
+
+
+```java
+// Integer를 포함하는 리스트의 각 요소를 우리가 정의한 map 메서드를 이용해 Apple 생성자로 전달한다.
+List<Integer> weights = Arrays.asList(7, 3, 4, 10);
+List<Apple> apples = map(weights, Apple::new); // map 메서드로 생성자 참조 전달
+
+public List<Apple> map(List<Integer> list, Function<Integer, Apple> f) {
+    List<Apple> result = new ArrayList<>();
+    for (Integer i : list) {
+        result.add(f.apply(i));
+    }
+    return result;
+}
+// 결과적으로 다양한 무게를 포함하는 사과 리스트가 만들어진다.
+```
+
+
+
+Apple(String color, Integer weight)처럼 두 인수를 갖는 생성자는 `BiFunction` 인터페이스와 같은 시그니처를 가지므로 다음처럼 할 수 있다.
+
+```java
+BiFunction<Color, Integer, Apple> c3 = Apple::new;
+Apple a3 = c3.apply(GREEN, 110);
+
+//* 위 코드는 다음과 같다. *//
+BiFunction<Color, Integer, Apple> c3 = (color, weight) -> new Apple(color, weight);
+Apple a3 = c3.apply(GREEN, 110);
+```
+
+위처럼 인스턴스화하지 않고도 생성자에 접근할 수 있는 기능을 다양한 상황에 쓸 수있다.
+
+예를 들어 `Map`으로 생성자와 문자열값을 관련시키고 String과 Integer가 주어졌을 때 다양한 무게를 갖는 여러 종류의 과일을 만드는 giveMeFruit라는 메서드를 만들 수 있다.
+
+```java
+static Map<String, Function<Integer, Fruit>> map = new HashMap<>();
+static {
+    map.put("apple", Apple::new);
+    map.Put("orange", Orange::new);
+    ...
+}
+
+public static Fruit giveMeFruit(String fruit, Integer weight) {
+    return map.get(fruit.toLowerCase()) // Function<Integer, Fruit>
+        	  .apply(weight); // 무게 파라미터로 Fruit를 만든다.
+}
+```
+
+
+
+# 7. 람다, 메서드참조 활용하기
+
+사과 리스트 정렬 문제를 해결하면서 지금까지 배운 동작을 총동원한다.
+
+## 1단계: 코드전달
+
+`void sort(Comparator<? super E> c)`
+
+이 코드는 `Comparator` 객체를 인수로 받아 두 사과를 비교한다. 이제 `sort`의 **동작은 파라미터화**되었다고 할 수 있다.
+
+```java
+public class AppleComparator implements Comparator<Apple> {
+    public int compare(Apple a1, Apple a2) {
+        return a1.getWeight().compareTo(a2.getWeight());
+    }
+}
+inventory.sort(new AppleComparator());
+```
+
+## 2단계: 익명클래스 사용
+
+한 번만 사용할 Comparator를 구현하는 것 보다는 **익명클래스**를 이용하는 것이 더 좋다.
+
+```java
+inventory.sort(new Comparator<Apple>() {
+    public int compare(Apple a1, Apple a2) {
+        return a1.getWeight().compareTo(a2.getWeight());
+    }
+})
+```
+
+## 3단계: 람다표현식 사용
+
+**함수형 인터페이스**를 기대하는 곳 어디에서나 람다 표현식을 사용할 수 있다고 했다.
+
+함수형 인터페이스는 오직 하나의 추상 메서드를 정의하는 인터페이스이다.
+
+여기서 추상메서드의 시그니처(**함수 디스크립터**)는 람다표현식의 시그니처를 정의한다.
+
+따라서 Comparator의 함수 디스크립터는 `(T, T) -> int` 이다. 우리는 사과를 사용할 것이므로 더 정확히는 `(Apple, Apple) -> int`이다.
+
+```java
+inventory.sort((Apple a1, Apple a2) ->
+                a1.getWeight().compareTo(a2.getWeight()));
+```
+
+자바 컴파일러는 람다표현식이 사용된 콘텍스트를 활용해 파라미터 형식을 추론한다.
+
+```java
+inventory.sort((a1, a2) -> a1.getWeight().compareTo(a2.getWeight()));
+```
+
+`Comparator`는 Comparable 키를 추출해서 Comparator 객체로 만드는 Function 함수를 인수로 받는 정적 메서드 **comparing**을 포함한다.
+
+```java
+Comparator<Apple> c = Comapartor.comparing((Apple a) -> a.getWeight());
+
+import static java.util.Comparator.comparing;
+inventory.sort(comparing(apple -> apple.getWeight()));
+```
+
+## 4단계: 메서드 참조 사용
+
+```java
+inventory.sort(comparing(Apple::getWeight));
+```
+
+이렇게 최적의 코드를 만들고 자바8 이전의 코드와 비교해보면, **단지 코드만 짧아진 것이 아니라 코드의 의미도 명확해졌다.**
+
+코드 자체로 "Apple을 weight별로 비교해서 inventory를 sort하라"는 의미를 전달할 수 있다.
+
+
+
+# :bell: Quiz
+
+>   **Quiz**
+>
+>   올바른 람다표현식 사용법은?
+>
+>   ```java
+>   // 1.
+>   excute(() -> {});
+>   public void execute(Runnable r) {
+>      r.run();
+>   }
+>   
+>   // 2.
+>   public Callable<String> fetch() {
+>      return () -> "Tricky example ;-)";
+>   }
+>   
+>   // 3.
+>   Predicate<Apple> p = (Apple a) -> a.getWeight();
+>   ```
+>
+>   
+>
+>   1번에서 람다표현식 `() -> {}`의 시그니처는 `() -> void` 이며 Runnable의 추상 메서드 run의 시그니처와 일치하므로 유효한 람다 표현식이다.
+>   람다의 바디가 비어 있으므로 이 코드를 실행하면 아무 일도 일어나지 않는다.
+>
+>   2번에서 fetch 메서드의 반환 형식은 Callable<String> 인데 T를 String으로 대치했을 때 Callable<String>  메서드의 시그니처는 `() -> String`이 된다.
+>   `() -> "Tricky example ;-)"`는 `() -> String` 시그니처이므로 문맥상 유효하다.
+>
+>   3번에서 람다 표현식 `(Apple a) -> a.getWeight()`의 시그니처는 `(Apple) -> Integer` 이므로 `Predicate<Apple>: (Apple) -> boolean` 의 test메서드의 시그니처와 일치하지 않는다. 따라서 유효하지 않다.
+
+
+
+>   **Quiz**
+>
+>   다음과 같은 함수형 디스크립터가 있을 때 어떤 함수형 인터페이스를 사용할 수 있는가? 또, 이 인터페이스에 사용할 수 있는 유효한 람다 표현식을 제시하시오.
+>
+>   1.   `T -> R`
+>   2.   `(Int, int) -> int`
+>   3.   `T -> void`
+>   4.   `() -> T`
+>   5.   `(T, U) -> R`
+>
+>   
+>
+>   1번은 Function<T, R>이 대표적이다 T형식의 객체를 R형식의 객체로 변환할 때 사용한다.
+>
+>   2번은 IntBinaryOperator의 `(int, int) -> int` 형식의 시그니처를 갖는 추상 메서드 applyAsInt를 정의한다.
+>
+>   3번은 Consumer<T> 는 `T -> void` 형식의 시그니처를 갖는 추상메서드 accept을 정의한다.
+>
+>   4번은 Supplier<T>는 `() -> T` 형식의 시그니처를 갖는 추상메서드 get을 정의한다.
+>    또, Callable<T>도 `() -> T` 형식의 시그니처를 갖는 추상메서드 call을 정의한다.
+>
+>   5번은 BiFunction<T, U, R>은 `(T, U) -> R` 형식의 시그니처를 갖는 추상메서드 apply를 정의한다.
+
+# :pencil: 마치며
+
+-   람다표현식은 메서드로 전달할 수 있는 _를 단순화한 것이다.
+-   함수형 인터페이스는 정확히 _의 _를 지정하는 인터페이스
+-   람다표현식의 시그니처를 서술하는 메서드를 _라고 한다.
+-   인스턴스 변수는 _에 저장되는 반면 지역변수는 _에 위치한다.
+-   람다에서 지역변수를 사용할 때 지역 변수는 명시적으로 _로 선언되어 있어야 하거나 실질적으로 _로 선언된 변수와 똑같이 사용되어야 한다.
