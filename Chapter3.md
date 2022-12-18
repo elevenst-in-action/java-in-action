@@ -492,7 +492,7 @@ Function<BufferedReader, String> f = (BufferedReader b) -> {
 
 ```java
 List<Apple> heavierThan150g =
-    filter(inventory, (Apple, apple) -> apple.getWeight() > 150);
+    filter(inventory, (Apple apple) -> apple.getWeight() > 150);
 ```
 
 다음과 같은 순서로 형식 확인 과정이 진행된다.
