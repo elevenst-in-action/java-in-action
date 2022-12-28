@@ -535,3 +535,293 @@ Map<Dish.Type, Optional<Dish>> mostCaloricByType =
 >   	);
 >   ```
 
+
+
+# 4. 분할
+
+분할은 **분할 함수**라 불리는 Predicate를 분류 함수로 사용하는 특수한 그룹화 기능이다.
+
+분할함수는 boolean을 반환하므로 맵의 키 형식은 `Boolean`이다. 이 그룹화 맵은 최대 (참/거짓)을 갖는 두 개의 그룹으로 분류된다.
+
+```java
+Map<Boolean, List<Dish>> partitionedMenu = 
+    menu.stream().collect(partitioningBy(Dish::isVegetarian)); // 분할함수
+
+// 다음과 같은 맵이 반환된다.
+{false=[pork, beef, chicken, prawns, salmon],
+ true=[french fries, rice, saeson fruit, pizza]}
+
+// 이제 참값의 키로 맵에서 모든 채식 요리를 얻을 수 있다.
+List<Dish> vegetarainDishes = partitionedMenu.get(true);
+
+// 아래 코드도 위와 같은 결과를 얻게 한다.
+List<Dish> vegetarainDishes = 
+    menu.stream().filter(Dish::isVegetarain).collect(toList());
+```
+
+
+
+## - 장점
+
+분할 함수가 반환하는 `참, 거짓` 두 가지 요소의 스트림 리스트를 모두 유지한다는 것이 분할의 장점이다.
+
+```java
+// 컬렉터를 두번 째 인수로 전달할 수 있는 오버로드 된 버전의 partitioningBy 메서드도 있다.
+Map<Boolean, Map<Dish.Type, List<Dish>>> vegetarainDishesByType = 
+    menu.stream().collect(partitioningBy(Dish::isVegetarian,			// 분할함수
+                                          groupingBy(Dish::getType)));	// 두 번째 컬렉터
+
+{false={FISH=[prawns, salmon], MEAT=[pork,beef, chicken]},
+ true={OTEHR=[french fries, rice, season fruit, pizza]}}
+
+// 채식요리의 스트림과, 채식이아닌요리의 스트림을 각각
+// 요리 종류로 그룹화 해서 두 수준의 맵이 반환되었다.
+```
+
+또,, 이전 코드를 활용하면 채식 요리와 채식이 아닌 요리 각각의 그룹에서 가장 칼로리가 높은 요리도 찾을 수 있다.
+
+```java
+Map<Boolean, Dish> mostCaloricPartitionedByVegetarain = 
+    menu.stream().collect(
+		partitioningBy(Dish::isVegetarain,
+                      collectingAndThen(maxBy(comparingInt(Dish::getCalories)),
+                                        Optional::get)));
+
+{false=pork, true=pizza}
+```
+
+**partitioningBy**가 반환한 맵 구현은 참과 거짓 두 가지 키만 포함되므로 간결하고 효과적이다.
+
+
+
+# 5. Collector 인터페이스
+
+`Collector` 인터페이스는 리듀싱 연산(즉, 컬렉터)를 어떻게 구현할지 제공하는 메서드 집합으로 구성된다.
+
+지금까지는 `toList`나 `groupingBy` 등 컬렉터 인터페이스를 구현하는 많은 컬렉터를 살펴봤다.
+
+`toList`가 어떻게 구현되었는지 살펴보면서 **Collector**가 어떻게 정의되어있고 내부적으로 **`collect`**메서드가 `toList`가 반환하는 함수를 어떻게 활용하는지 이해하자.
+
+```java
+// Collector interface
+public interface Collector<T, A, R> {
+    Supplier<A> supplier();
+    BiConsumer<A, T> accumulator();
+    Function<A, R> finisher();
+    BinaryOperator<A> combiner();
+    Set<Cahracteristics> characteristics();
+}
+```
+
+-   `T` : 수집될 스트림 항목의 제네릭 형식
+-   `A` : 누적자, 즉 수집 과정에서 중간 결과를 누적하는 객체의 형식
+-   `R` : 수집 연산 결과 객체의 형식(대개 컬렉션)
+
+예를 들어 `Stream<T>`의 모든 요소를 `List<T>`로 수집하는 `ToListCollector<T>`라는 클래스를 구현할 수 있다.
+
+```java
+public class ToListCollector<T> implements Collector<T, List<T>, List<T>>
+```
+
+
+
+>   컬렉터 인터페이스에 정의된 다섯 개의 메서드 중 먼저 네 개의 메서드는 `collect`메서드에서 실행하는 함수를 반환하는 반면, 다섯번째인 `characteristics`는 `collect` 메서드가 어떤 최적화를 이용해서 리듀싱연산을 수행할 것인지 결정하도록 돕는 힌트 특성 집합을 제공한다.
+
+## - supplier()
+
+***새로운 결과 컨테이너 만들기***
+
+`supplier` 메서드는 빈 결과로 이루어진 `Supplier`를 반환해야 한다.
+
+즉, `supplier`는 수집 과정에서 빈 누적자 인스턴스를 만드는 파라미터가 없는 함수이다.
+
+```java
+// ToListCollector에서 supplier는 다음처럼 빈 리스트를 반환한다.
+public Supplier<List<T>> supplier() {
+    return () -> new ArrayList<T>();
+}
+
+// 생성자참조를 전달할 수도 있다.
+public Supplier<List<T>> supplier() {
+	return ArrayList::new;
+}
+```
+
+
+
+## - accumulator()
+
+***결과 컨테이너에 요소 추가하기***
+
+`accumulator` 메서드는 리듀싱 연산을 수행하는 함수를 반환한다.
+
+스트림에서 n번째 요소를 탐색할 때 두 인수, 즉 누적자와 n번째 요소를 함수에 적용한다.
+
+함수의 반환값은 void, 즉 요소를 탐색하면서 적용하는 함수에 의해 누적자 내부 상태가 바뀌므로 누적자가 어떤 값인지 단정할 수 없다.
+
+```java
+// ToListCollector에서 accumulator가 반환하는 함수는 이미 탐색한 항목을 포함하는 리스트에 현재 항목을 추가하는 연산을 수행한다.
+public BiConsumer<List<T>, T> accumulator() {
+    return (list, item) -> list.add(item);
+}
+
+// 메서드 참조로 더 간결하게 표현가능하다.
+public BiConsumer<List<T>, T> accumulator() {
+	return List::add;
+}
+```
+
+
+
+## - finisher()
+
+***최종 변환값을 결과 컨테이너로 적용하기***
+
+`finisher` 메서드는 스트림 탐색을 끝내고 누적자 객체를 최종 결과로 변환하면서 누적 과정을 끝낼 때 호출할 함수를 반환해야 한다.
+
+때로는 누적자 객체가 이미 최종 결과인 상황도 있다.
+
+이 때는 변환과정이 필요하지 않으므로 `finisher` 메서드는 항등함수를 반환한다.
+
+```java
+public Function<List<T>, List<T>> finisher() {
+    return Function.identity();
+}
+```
+
+
+
+>   **순차 리듀싱 과정의 논리적 순서**
+>
+>   ![image-20221228194903057](/Users/a1101716/Desktop/TIL_IMG/image-20221228194903057.png)
+
+
+
+## - combiner()
+
+`combiner` 메서드는 스트림의 서로 다른 서브파트를 병렬로 처리할 때 누적자가 이 결과를 어떻게 처리할지 정의한다.
+
+```java
+// toList는 스트림의 두 번째 서브파트에서 수집한 리스트를 첫 번째 서브파트 결과 리스트의 뒤에 추가하면 된다.
+public BinaryOperator<List<T>> combiner() {
+    return (list1, list2) -> {
+        list1.addAll(list2);
+        return list1;
+    }
+}
+```
+
+
+
+>   **병렬화 리듀싱 과정에서 combiner 메서드 활용**
+>
+>   ![image-20221228195135130](/Users/a1101716/Desktop/TIL_IMG/image-20221228195135130.png)
+>
+>    **`combiner`** 메서드를 이용하면 **스트림의 리듀싱을 병렬로 수행할 수 있다.**
+>
+>   병렬 리듀싱 수행과정
+>
+>   1.   스트림을 분할해야 하는지 정의하는 조건이 거짓으로 바뀌기 전까지 원래 스트림을 재귀적으로 분할한다.
+>        -   보통 분산된 작업의 크기가 너무 작아지면 병렬 수행의 속도는 순차 수행의 속도보다 느려진다.
+>        -   즉 졍렬 수행의 효과가 상쇄된다.
+>        -   일반적으로 프로세싱코어의 개수를 초과하는 병렬작업은 효율적이지 않다.
+>   2.   순차 리듀싱 연산에서 보여주는 것처럼 서브스트림(substream)의 각 요소에 리듀싱 연산을 순차적으로 적용해 서브스트림을 병렬로 처리할 수 있다.
+>   3.   마지막에는 컬렉터의 `combiner` 메서드가 반환하는 함수로 모든 부분결과를 쌍으로 합친다. 즉, 분할된 모든 서브스트림의 결과를 합치면서 연산이 완료된다.
+
+## - characteristics()
+
+`characteristics` 메서드는 컬렉터의 연산을 정의하는 `Characteristics` 형식의 불변 집합을 반환한다
+
+`Characteristics`는 스트림을 병렬로 리듀스할 것인지, 그리고 병렬로 리듀스한다면 어떤 최적화를 선택할지 힌트를 제공한다.
+
+불변 집합은 다음 Enum 항목을 포함한다.
+
+-   **`UNORDERED`** : 리듀싱 결과는 스트림 요소의 방문 순서나 누적 순서에 영향을 받지 않는다.
+-   **`CONCURRENT`** : 다중 스레드에서 `accumulator` 함수를 동시에 호출할 수 있으며 이 컬렉터는 스트림의 병렬 리듀싱을 수행할 수 있다.
+    -   컬렉터의 플래그에 `UNORDERED`를 함께 설정하지 않았다면 데이터 소스가 정렬되어 있지 않은(집합 처럼 요소의 순서가 무의미한) 상황에서만 병렬리듀싱을 수행할 수 있다.
+-   **`IDENTITY_FINISH`** : `finisher` 메서드가 반환하는 함수는 단순히 `identity`를 적용할 뿐이므로 이를 생략할 수 있다.
+    -   따라서 리듀싱 과정의 최종 결과로 누적자 객체를 바로 사용할 수 있다.
+    -   또한 누적자 A를 결과 R로 안전하게 형변환 할 수 있다.
+
+>   지금까지 개발한 `ToListCollector`에서 스트림의 요소를 누적하는 데 사용한 리스트가 최종결과 형식이므로 추가 변환이 필요없다.
+>
+>   따라서 `ToListCollector`는 `IDENTITY_FINISH`이다.
+>
+>   하지만 리스트의 순서는 상관이 없으므로 `UNORDERED`이다.
+>
+>   `ToListCollector`는 `CONCURRENT` 이다.
+>
+>   하지만 요소의 순서가 무의미한 데이터 소스여야 병렬로 실행할 수 있다.
+
+
+
+## -응용하기
+
+위에서 살펴본 다섯 가지 메서드로 자신만의 커스텀 `ToListCollector`를 구현할 수 있다.
+
+```java
+public class ToListCollector<T> implements Collector<T, List<T>, List<T>> {
+    @Override
+    public Supplier<List<T>> supplier() {
+        return ArrayList::new;					// 수집 연산의 시발점
+    }
+    
+    @Override
+	public BiConsumer<List<T>, T> accumulator() {
+        return List::add;						// 탐색한 항목을 누적하고 바로 누적자를 고친다.
+    }
+    
+    @Override
+    public Function<List<T>, List<T>> finisher() {
+        return Function.identity();				// 항등함수
+    }
+    
+    @Override
+    public BinaryOperator<List<T>> combiner() {
+        return (list1, list2) -> {
+            list1.addAll(list2);
+            return list1;
+        }
+    }
+    
+    @Override
+    public Set<Characteristics> characteristics() {
+        return Collections.unmodifiableSet(EnumSet.of(
+        	IDENTITY_FINISH, CONCURRENT));		// 컬렉터의 플래그를 IDENTITY_FINISH, CONCURRENT로 설정한다.
+    }
+}
+```
+
+이 구현이 `Collectors.toList()` 메서드가 반환하는 결과와 완전히 같은 것은 아니지만 사소한 최적화를 제외하면 대체로 비슷하다.
+
+이제 자바에서 제공하는 API 대신 우리가 만든 컬렉터를 메뉴 스트림의 모든 요리를 수집하는 예제에 사용할 수 있다.
+
+```java
+List<Dish> dishes = menuStream.collect(new ToListCollector<Dish>());
+```
+
+기존 코드의 `toList`는 팩토리이지만 커스텀 컬렉터는 `new`로 인스턴스화한다는 점이 다르다.
+
+>   ***컬렉터 구현을 만들지 않고도 커스텀 수집 수행***
+>
+>   Stream은 세 함수(발행, 누적, 합침)를 인수로 받는 `collect` 메서드를 오버로드하며 각각의 메서드는 `Collector` 인터페이스의 메서드가 반환하는 함수와 같은 기능을 수행한다.
+>
+>   ```java
+>   // 아래처럼 스트림의 모든 항목을 리스트에 수집하는 방법도 있다.
+>   List<Dish> dishes = menuStream.collect(
+>   	ArrayList::new,		// 발행
+>       List::add,			// 누적
+>       List::addAll		// 합침
+>   );
+>   ```
+>
+>   위 코드는 간결하고 축약되어 있지만 가독성은 떨어진다. **적절한 클래스로 커스텀 컬렉터를 구현하는 편이 중복을 피하고 재사용성을 높이는 데 도움이 된다.**
+>
+>   또한, 위는 `Characteristics`를 전달할 수 없기 때문에 `IDENTITY_FINISH`와 `COCURRENT`이지만, `UNORDERED`는 아닌 컬렉터로만 동작한다.
+
+
+
+# :pencil: 마치며
+
+-   _는 스트림의 요소를 요약 결과로 누적하는 다양한 방법(컬렉터)을 인수로 갖는 **최종연산**이다.
+-   미리 정의된 컬렉터인 _로 스트림의 요소를 **그룹화**하거나, _로 스트림의 요소를 **분할**할 수 있다.
