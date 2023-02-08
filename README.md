@@ -2,7 +2,11 @@
 
 <img src="https://raw.githubusercontent.com/hscom96/ImageStore/main/images/2023/01/09/image-20230109230353885.png" alt="image-20230109230353885" style="width:50%;" />
 
+## 📘 Member 
 
+- [김현수](https://github.com/hscom96)
+- [김성현](https://github.com/kim-svadoz)
+- [이지인](https://github.com/LeahJiinLee)
 
 ## 📙 진행 내역
 
@@ -13,12 +17,6 @@
 |  3   | 22.01.16 (월) | Ch 07, 08, 09 | 김현수, 이지인, 김성현 |
 |  4   | 23.02.01 (수) | Ch 10, 11, 12 | 김현수, 이지인, 김성현 |
 |      |               |               |                        |
-
-## 📘 Member 
-
-- [김현수](https://github.com/hscom96)
-- [김성현](https://github.com/kim-svadoz)
-- [이지인](https://github.com/LeahJiinLee)
 
 ## 📗 Rule
 
